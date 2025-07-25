@@ -2,7 +2,6 @@
 const nextConfig = {
   // Configuración de rendimiento optimizada para aplicaciones financieras
   experimental: {
-    appDir: true,
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
   

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -75,10 +75,10 @@ model CoupleProfile {
 // Representa ingresos y gastos de la pareja
 model Transaction {
   id          String            @id @default(cuid())
-  amount      Decimal           @db.Decimal(10, 2) // Cantidad con 2 decimales
+  amount      Float             // Cantidad con decimales
   description String
   date        DateTime          @default(now())
-  type        TransactionType   // INCOME o EXPENSE
+  type        String            // "INCOME" o "EXPENSE"
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   
@@ -112,7 +112,7 @@ model Category {
   description String?
   icon        String          // Nombre del icono (ej: "home", "car", "food")
   color       String          // Color en formato hex
-  type        TransactionType // INCOME o EXPENSE
+  type        String          // "INCOME" o "EXPENSE"
   isDefault   Boolean         @default(false) // Categorías por defecto del sistema
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -139,8 +139,8 @@ model Category {
 model Budget {
   id          String      @id @default(cuid())
   name        String
-  amount      Decimal     @db.Decimal(10, 2)
-  period      BudgetPeriod // MONTHLY, WEEKLY, YEARLY
+  amount      Float
+  period      String      // "MONTHLY", "WEEKLY", "YEARLY"
   startDate   DateTime
   endDate     DateTime?   // null para presupuestos recurrentes
   isActive    Boolean     @default(true)
@@ -148,7 +148,7 @@ model Budget {
   updatedAt   DateTime    @updatedAt
   
   // Alertas de presupuesto
-  alertThreshold Decimal?  @db.Decimal(3, 2) // Porcentaje (ej: 0.80 = 80%)
+  alertThreshold Float?    // Porcentaje (ej: 0.80 = 80%)
   alertSent      Boolean   @default(false)
   
   // Relaciones
@@ -167,8 +167,8 @@ model SavingsGoal {
   id            String      @id @default(cuid())
   name          String
   description   String?
-  targetAmount  Decimal     @db.Decimal(10, 2)
-  currentAmount Decimal     @db.Decimal(10, 2) @default(0)
+  targetAmount  Float
+  currentAmount Float       @default(0)
   targetDate    DateTime?   // Fecha objetivo (opcional)
   isCompleted   Boolean     @default(false)
   createdAt     DateTime    @default(now())
@@ -177,7 +177,7 @@ model SavingsGoal {
   // Metadatos del objetivo
   icon          String?     // Icono representativo (viaje, casa, etc.)
   color         String?     // Color personalizado
-  priority      Priority    @default(MEDIUM)
+  priority      String      @default("MEDIUM") // "LOW", "MEDIUM", "HIGH"
   
   // Relaciones
   couple        CoupleProfile @relation(fields: [coupleId], references: [id])
@@ -193,7 +193,7 @@ model SavingsGoal {
 // Registro de aportes individuales a objetivos compartidos
 model SavingsGoalContribution {
   id            String      @id @default(cuid())
-  amount        Decimal     @db.Decimal(10, 2)
+  amount        Float
   date          DateTime    @default(now())
   notes         String?
   createdAt     DateTime    @default(now())
@@ -213,9 +213,9 @@ model SavingsGoalContribution {
 model RecurringTransaction {
   id          String              @id @default(cuid())
   name        String
-  amount      Decimal             @db.Decimal(10, 2)
-  type        TransactionType
-  frequency   RecurrenceFrequency // DAILY, WEEKLY, MONTHLY, YEARLY
+  amount      Float
+  type        String              // "INCOME" o "EXPENSE"
+  frequency   String              // "DAILY", "WEEKLY", "MONTHLY", "YEARLY"
   startDate   DateTime
   endDate     DateTime?           // null para indefinido
   isActive    Boolean             @default(true)
@@ -242,7 +242,7 @@ model UserSettings {
   id                    String  @id @default(cuid())
   
   // Preferencias de interfaz
-  theme                 Theme   @default(LIGHT)
+  theme                 String  @default("LIGHT") // "LIGHT", "DARK", "SYSTEM"
   language              String  @default("es")
   currency              String  @default("EUR")
   
@@ -256,7 +256,7 @@ model UserSettings {
   shareDataForAnalytics Boolean @default(false)
   
   // Chatbot preferences
-  chatbotPersonality    ChatbotPersonality @default(FRIENDLY)
+  chatbotPersonality    String @default("FRIENDLY") // "PROFESSIONAL", "FRIENDLY", "MOTIVATIONAL", "CASUAL"
   
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -268,23 +268,21 @@ model UserSettings {
   @@map("user_settings")
 }
 
-/**
- * Configuraciones compartidas de la pareja
- */
+// Configuraciones compartidas de la pareja
 model SharedSettings {
   id                      String  @id @default(cuid())
   
   // Configuraciones financieras compartidas
-  splitMethod             SplitMethod @default(EQUAL) // EQUAL, PROPORTIONAL, CUSTOM
+  splitMethod             String @default("EQUAL") // "EQUAL", "PROPORTIONAL", "CUSTOM"
   defaultCurrency         String      @default("EUR")
   
   // Configuraciones de presupuesto
-  budgetCycle             BudgetPeriod @default(MONTHLY)
+  budgetCycle             String @default("MONTHLY") // "WEEKLY", "MONTHLY", "YEARLY"
   budgetStartDay          Int          @default(1) // Día de inicio del ciclo
   
   // Configuraciones de notificaciones compartidas
   sharedGoalNotifications Boolean     @default(true)
-  largeExpenseThreshold   Decimal?    @db.Decimal(10, 2) // Umbral para gastos grandes
+  largeExpenseThreshold   Float?      // Umbral para gastos grandes
   
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
@@ -303,12 +301,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -334,48 +332,4 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
-}
-
-// Enums para tipos de datos específicos
-enum TransactionType {
-  INCOME
-  EXPENSE
-}
-
-enum BudgetPeriod {
-  WEEKLY
-  MONTHLY
-  YEARLY
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum RecurrenceFrequency {
-  DAILY
-  WEEKLY
-  MONTHLY
-  YEARLY
-}
-
-enum Theme {
-  LIGHT
-  DARK
-  SYSTEM
-}
-
-enum ChatbotPersonality {
-  PROFESSIONAL
-  FRIENDLY
-  MOTIVATIONAL
-  CASUAL
-}
-
-enum SplitMethod {
-  EQUAL      // 50/50
-  PROPORTIONAL // Basado en ingresos
-  CUSTOM     // División personalizada
 } 

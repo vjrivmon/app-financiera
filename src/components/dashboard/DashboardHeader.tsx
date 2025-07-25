@@ -127,7 +127,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
-                  getInitials(displayName)
+                  getInitials(displayName || 'Usuario')
                 )}
               </div>
 

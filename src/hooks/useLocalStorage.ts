@@ -142,7 +142,7 @@ export function useTransactionFilters() {
     dateRange: 'current-month' as 'current-month' | 'last-month' | 'current-year' | 'custom',
     categories: [] as string[],
     transactionTypes: [] as ('INCOME' | 'EXPENSE')[],
-    amountRange: { min: undefined, max: undefined } as { min?: number; max?: number },
+    amountRange: {} as { min?: number; max?: number },
     sortBy: 'date' as 'date' | 'amount' | 'description',
     sortOrder: 'desc' as 'asc' | 'desc',
   });

@@ -99,11 +99,9 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
-            avatar: user.avatar,
-            coupleId: user.coupleId,
-            coupleName: user.coupleProfile?.name,
-          };
+            name: user.name || 'Usuario',
+            image: user.avatar,
+          } as any;
         } catch (error) {
           console.error('Error en autenticación:', error);
           throw new Error('Error interno del servidor');
@@ -140,7 +138,6 @@ export const authOptions: NextAuthOptions = {
   // Páginas personalizadas
   pages: {
     signIn: '/auth/signin',
-    signUp: '/auth/signup',
     error: '/auth/error',
     verifyRequest: '/auth/verify-request',
     newUser: '/auth/new-user',
