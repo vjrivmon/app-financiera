@@ -1,0 +1,381 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Usuario individual
+// Cada persona de la pareja tiene su propio perfil
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  avatar        String?   // URL del avatar
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relación con autenticación
+  accounts Account[]
+  sessions Session[]
+
+  // Perfil de pareja (uno por usuario)
+  coupleProfile CoupleProfile? @relation(fields: [coupleId], references: [id])
+  coupleId      String?
+
+  // Transacciones creadas por este usuario
+  transactions Transaction[]
+  
+  // Categorías personalizadas creadas por este usuario
+  categories Category[]
+  
+  // Objetivos de ahorro donde participa
+  savingsGoalContributions SavingsGoalContribution[]
+  
+  // Configuraciones personales
+  settings UserSettings?
+
+  @@map("users")
+}
+
+// Modelo de Perfil de Pareja
+// Representa la cuenta compartida de la pareja
+model CoupleProfile {
+  id           String   @id @default(cuid())
+  name         String   // Nombre de la pareja, ej: "Juan y María"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Configuraciones de la pareja
+  currency     String   @default("EUR") // Moneda principal
+  timezone     String   @default("Europe/Madrid")
+  
+  // Usuarios que forman parte de esta pareja
+  users        User[]
+  
+  // Datos financieros compartidos
+  transactions Transaction[]
+  categories   Category[]
+  budgets      Budget[]
+  savingsGoals SavingsGoal[]
+  
+  // Configuraciones compartidas
+  sharedSettings SharedSettings?
+
+  @@map("couple_profiles")
+}
+
+// Modelo de Transacción Financiera
+// Representa ingresos y gastos de la pareja
+model Transaction {
+  id          String            @id @default(cuid())
+  amount      Decimal           @db.Decimal(10, 2) // Cantidad con 2 decimales
+  description String
+  date        DateTime          @default(now())
+  type        TransactionType   // INCOME o EXPENSE
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Metadatos adicionales
+  notes       String?           // Notas adicionales
+  location    String?           // Ubicación donde se realizó
+  receipt     String?           // URL del recibo/foto
+  
+  // Relaciones
+  category    Category          @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  
+  user        User              @relation(fields: [userId], references: [id])
+  userId      String            // Usuario que registró la transacción
+  
+  couple      CoupleProfile     @relation(fields: [coupleId], references: [id])
+  coupleId    String
+  
+  // Para transacciones recurrentes
+  recurringTransactionId String?
+  recurringTransaction   RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id])
+
+  @@map("transactions")
+}
+
+// Modelo de Categoría de Transacción
+// Categorías personalizables para organizar gastos e ingresos
+model Category {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  icon        String          // Nombre del icono (ej: "home", "car", "food")
+  color       String          // Color en formato hex
+  type        TransactionType // INCOME o EXPENSE
+  isDefault   Boolean         @default(false) // Categorías por defecto del sistema
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  // Relaciones
+  user        User?           @relation(fields: [userId], references: [id])
+  userId      String?         // null si es categoría por defecto
+  
+  couple      CoupleProfile   @relation(fields: [coupleId], references: [id])
+  coupleId    String
+  
+  // Transacciones de esta categoría
+  transactions Transaction[]
+  
+  // Presupuestos asociados
+  budgets     Budget[]
+
+  @@unique([name, coupleId]) // Nombres únicos por pareja
+  @@map("categories")
+}
+
+// Modelo de Presupuesto
+// Límites de gasto por categoría y período
+model Budget {
+  id          String      @id @default(cuid())
+  name        String
+  amount      Decimal     @db.Decimal(10, 2)
+  period      BudgetPeriod // MONTHLY, WEEKLY, YEARLY
+  startDate   DateTime
+  endDate     DateTime?   // null para presupuestos recurrentes
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Alertas de presupuesto
+  alertThreshold Decimal?  @db.Decimal(3, 2) // Porcentaje (ej: 0.80 = 80%)
+  alertSent      Boolean   @default(false)
+  
+  // Relaciones
+  category    Category      @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  
+  couple      CoupleProfile @relation(fields: [coupleId], references: [id])
+  coupleId    String
+
+  @@map("budgets")
+}
+
+// Modelo de Objetivo de Ahorro
+// Metas de ahorro compartidas de la pareja
+model SavingsGoal {
+  id            String      @id @default(cuid())
+  name          String
+  description   String?
+  targetAmount  Decimal     @db.Decimal(10, 2)
+  currentAmount Decimal     @db.Decimal(10, 2) @default(0)
+  targetDate    DateTime?   // Fecha objetivo (opcional)
+  isCompleted   Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Metadatos del objetivo
+  icon          String?     // Icono representativo (viaje, casa, etc.)
+  color         String?     // Color personalizado
+  priority      Priority    @default(MEDIUM)
+  
+  // Relaciones
+  couple        CoupleProfile @relation(fields: [coupleId], references: [id])
+  coupleId      String
+  
+  // Contribuciones individuales de cada miembro
+  contributions SavingsGoalContribution[]
+
+  @@map("savings_goals")
+}
+
+// Modelo de Contribución a Objetivo de Ahorro
+// Registro de aportes individuales a objetivos compartidos
+model SavingsGoalContribution {
+  id            String      @id @default(cuid())
+  amount        Decimal     @db.Decimal(10, 2)
+  date          DateTime    @default(now())
+  notes         String?
+  createdAt     DateTime    @default(now())
+  
+  // Relaciones
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  
+  savingsGoal   SavingsGoal @relation(fields: [savingsGoalId], references: [id])
+  savingsGoalId String
+
+  @@map("savings_goal_contributions")
+}
+
+// Modelo de Transacción Recurrente
+// Para gastos/ingresos automáticos (nómina, alquiler, etc.)
+model RecurringTransaction {
+  id          String              @id @default(cuid())
+  name        String
+  amount      Decimal             @db.Decimal(10, 2)
+  type        TransactionType
+  frequency   RecurrenceFrequency // DAILY, WEEKLY, MONTHLY, YEARLY
+  startDate   DateTime
+  endDate     DateTime?           // null para indefinido
+  isActive    Boolean             @default(true)
+  nextDue     DateTime            // Próxima fecha de ejecución
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  // Configuración específica
+  dayOfMonth  Int?                // Para MONTHLY (día del mes)
+  dayOfWeek   Int?                // Para WEEKLY (día de la semana)
+  
+  // Relaciones
+  categoryId  String
+  coupleId    String
+  
+  // Transacciones generadas por esta recurrencia
+  transactions Transaction[]
+
+  @@map("recurring_transactions")
+}
+
+// Configuraciones personales del usuario
+model UserSettings {
+  id                    String  @id @default(cuid())
+  
+  // Preferencias de interfaz
+  theme                 Theme   @default(LIGHT)
+  language              String  @default("es")
+  currency              String  @default("EUR")
+  
+  // Notificaciones
+  emailNotifications    Boolean @default(true)
+  pushNotifications     Boolean @default(true)
+  budgetAlerts          Boolean @default(true)
+  goalReminders         Boolean @default(true)
+  
+  // Privacidad
+  shareDataForAnalytics Boolean @default(false)
+  
+  // Chatbot preferences
+  chatbotPersonality    ChatbotPersonality @default(FRIENDLY)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relación uno a uno con User
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String  @unique
+
+  @@map("user_settings")
+}
+
+/**
+ * Configuraciones compartidas de la pareja
+ */
+model SharedSettings {
+  id                      String  @id @default(cuid())
+  
+  // Configuraciones financieras compartidas
+  splitMethod             SplitMethod @default(EQUAL) // EQUAL, PROPORTIONAL, CUSTOM
+  defaultCurrency         String      @default("EUR")
+  
+  // Configuraciones de presupuesto
+  budgetCycle             BudgetPeriod @default(MONTHLY)
+  budgetStartDay          Int          @default(1) // Día de inicio del ciclo
+  
+  // Configuraciones de notificaciones compartidas
+  sharedGoalNotifications Boolean     @default(true)
+  largeExpenseThreshold   Decimal?    @db.Decimal(10, 2) // Umbral para gastos grandes
+  
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  
+  // Relación uno a uno con CoupleProfile
+  couple                  CoupleProfile @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  coupleId                String        @unique
+
+  @@map("shared_settings")
+}
+
+// Modelos para NextAuth.js
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Enums para tipos de datos específicos
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum BudgetPeriod {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum ChatbotPersonality {
+  PROFESSIONAL
+  FRIENDLY
+  MOTIVATIONAL
+  CASUAL
+}
+
+enum SplitMethod {
+  EQUAL      // 50/50
+  PROPORTIONAL // Basado en ingresos
+  CUSTOM     // División personalizada
+} 
