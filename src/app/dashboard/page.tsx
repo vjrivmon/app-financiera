@@ -1,20 +1,98 @@
 /**
- * Dashboard Principal - Vista de resumen financiero
+ * Dashboard Principal - Vista de resumen financiero con datos reales
  */
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { prisma } from '@/lib/prisma';
 
 /**
- * Dashboard Principal - Vista de resumen financiero
+ * Dashboard Principal - Vista de resumen financiero con datos reales
  */
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   
   if (!session) {
     redirect('/auth/signin');
+  }
+
+  // Obtener datos reales de la base de datos
+  let dashboardData = {
+    totalBalance: 0,
+    monthlyIncome: 0,
+    monthlyExpenses: 0,
+    recentTransactions: [] as any[],
+    savingsGoals: [] as any[],
+    hasData: false
+  };
+
+  try {
+    // Buscar el usuario y su coupleId
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { coupleId: true }
+    });
+
+    if (user?.coupleId) {
+      // Obtener fecha actual para filtros
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      // Obtener transacciones del mes actual
+      const transactions = await prisma.transaction.findMany({
+        where: {
+          coupleId: user.coupleId,
+          date: {
+            gte: startOfMonth,
+            lte: endOfMonth
+          }
+        },
+        orderBy: {
+          date: 'desc'
+        },
+        take: 5,
+        include: {
+          user: {
+            select: { name: true }
+          }
+        }
+      });
+
+      // Calcular totales
+      const income = transactions
+        .filter(t => t.type === 'INCOME')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      const expenses = transactions
+        .filter(t => t.type === 'EXPENSE')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      // Obtener objetivos de ahorro
+      const goals = await prisma.savingsGoal.findMany({
+        where: {
+          coupleId: user.coupleId,
+          isCompleted: false
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 3
+      });
+
+      dashboardData = {
+        totalBalance: income - expenses,
+        monthlyIncome: income,
+        monthlyExpenses: expenses,
+        recentTransactions: transactions,
+        savingsGoals: goals,
+        hasData: transactions.length > 0 || goals.length > 0
+      };
+    }
+  } catch (error) {
+    console.error('❌ Error cargando datos del dashboard:', error);
   }
 
   return (
@@ -25,17 +103,25 @@ export default async function DashboardPage() {
           ¡Bienvenido, {session.user.name?.split(' ')[0] || 'Usuario'}! 👋
         </h1>
         <p className="text-gray-600 mt-2">
-          Comienza a gestionar tus finanzas de manera inteligente
+          {dashboardData.hasData ? 
+            'Aquí tienes un resumen de tu actividad financiera' : 
+            'Comienza a gestionar tus finanzas de manera inteligente'
+          }
         </p>
       </div>
 
-      {/* Quick Stats - Empty State */}
+      {/* Quick Stats - Datos Reales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Balance Total</p>
-              <p className="text-2xl font-bold text-gray-900">€0,00</p>
+              <p className={`text-2xl font-bold ${dashboardData.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                €{dashboardData.totalBalance.toFixed(2)}
+              </p>
+              {dashboardData.hasData && (
+                <p className="text-xs text-gray-500 mt-1">Este mes</p>
+              )}
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +135,14 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Ingresos del Mes</p>
-              <p className="text-2xl font-bold text-green-600">€0,00</p>
+              <p className="text-2xl font-bold text-green-600">
+                €{dashboardData.monthlyIncome.toFixed(2)}
+              </p>
+              {dashboardData.hasData && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {dashboardData.recentTransactions.filter(t => t.type === 'INCOME').length} transacciones
+                </p>
+              )}
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +156,14 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Gastos del Mes</p>
-              <p className="text-2xl font-bold text-red-600">€0,00</p>
+              <p className="text-2xl font-bold text-red-600">
+                €{dashboardData.monthlyExpenses.toFixed(2)}
+              </p>
+              {dashboardData.hasData && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {dashboardData.recentTransactions.filter(t => t.type === 'EXPENSE').length} transacciones
+                </p>
+              )}
             </div>
             <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,7 +174,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Content - Empty States */}
+      {/* Main Content - Datos Reales o Estados Vacíos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Recent Transactions */}
@@ -89,20 +189,55 @@ export default async function DashboardPage() {
             </Link>
           </div>
           
-          <div className="text-center py-8">
-            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+          {dashboardData.recentTransactions.length > 0 ? (
+            <div className="space-y-4">
+              {dashboardData.recentTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      transaction.type === 'INCOME' ? 'bg-green-100' : 'bg-red-100'
+                    }`}>
+                      {transaction.type === 'INCOME' ? (
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{transaction.description}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(transaction.date).toLocaleDateString('es-ES')} • {transaction.user.name}
+                      </p>
+                    </div>
+                  </div>
+                  <p className={`font-semibold ${
+                    transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {transaction.type === 'INCOME' ? '+' : '-'}€{Number(transaction.amount).toFixed(2)}
+                  </p>
+                </div>
+              ))}
             </div>
-            <p className="text-gray-500 text-sm">No hay transacciones aún</p>
-            <Link 
-              href="/dashboard/transactions/new"
-              className="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-            >
-              + Nueva Transacción
-            </Link>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <p className="text-gray-500 text-sm">No hay transacciones aún</p>
+              <Link 
+                href="/dashboard/transactions/new"
+                className="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              >
+                + Nueva Transacción
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Savings Goals */}
@@ -117,20 +252,60 @@ export default async function DashboardPage() {
             </Link>
           </div>
           
-          <div className="text-center py-8">
-            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-              </svg>
+          {dashboardData.savingsGoals.length > 0 ? (
+            <div className="space-y-4">
+              {dashboardData.savingsGoals.map((goal) => {
+                const progress = (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100;
+                return (
+                  <div key={goal.id} className="border border-gray-100 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900">{goal.name}</h3>
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        goal.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
+                        goal.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {goal.priority === 'HIGH' ? 'Alta' : goal.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                      </span>
+                    </div>
+                    <div className="mb-2">
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>€{Number(goal.currentAmount).toFixed(2)}</span>
+                        <span>€{Number(goal.targetAmount).toFixed(2)}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{ width: `${Math.min(progress, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {progress.toFixed(1)}% completado
+                      {goal.targetDate && (
+                        <> • Meta: {new Date(goal.targetDate).toLocaleDateString('es-ES')}</>
+                      )}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-gray-500 text-sm">No hay objetivos creados</p>
-            <Link 
-              href="/dashboard/goals/new"
-              className="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-            >
-              + Nuevo Objetivo
-            </Link>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 text-sm">No hay objetivos creados</p>
+              <Link 
+                href="/dashboard/goals/new"
+                className="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              >
+                + Nuevo Objetivo
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

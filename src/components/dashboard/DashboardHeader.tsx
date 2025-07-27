@@ -56,6 +56,12 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
     router.push('/dashboard/settings');
   };
 
+  // Función para truncar email
+  const truncateEmail = (email: string, maxLength: number = 20) => {
+    if (email.length <= maxLength) return email;
+    return email.substring(0, maxLength) + '...';
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -143,10 +149,17 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
 
               {/* Dropdown Menu */}
               {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {user.name}
+                    </p>
+                    <p 
+                      className="text-xs text-gray-500 truncate" 
+                      title={user.email || ''}
+                    >
+                      {user.email ? truncateEmail(user.email, 30) : ''}
+                    </p>
                   </div>
                   
                   <button 

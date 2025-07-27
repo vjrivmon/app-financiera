@@ -45,10 +45,7 @@ const optionalCurrencySchema = currencySchema.optional();
 /**
  * Validaciones para strings comunes
  */
-const nameSchema = z.string()
-  .min(1, 'El nombre es obligatorio')
-  .max(100, 'El nombre no puede tener más de 100 caracteres')
-  .trim();
+// Removed unused nameSchema
 
 const descriptionSchema = z.string()
   .max(500, 'La descripción no puede tener más de 500 caracteres')
@@ -81,29 +78,23 @@ const dateSchema = z.date({
 // const pastOrPresentDateSchema = z.date().refine(date => date <= new Date(), 'La fecha no puede ser futura');
 
 /**
- * Esquemas de autenticación
+ * Validaciones para formularios de autenticación
  */
 export const signInSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'La contraseña es obligatoria'),
-  remember: z.boolean().optional().default(false)
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'Password requerido'),
 });
 
 export const signUpSchema = z.object({
-  name: nameSchema,
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: z.string(),
-  acceptTerms: z.boolean()
-    .refine(val => val === true, 'Debes aceptar los términos y condiciones'),
-  coupleName: z.string()
-    .min(1, 'El nombre de la pareja es obligatorio')
-    .max(150, 'El nombre de la pareja no puede tener más de 150 caracteres')
-    .trim()
-    .optional()
+  name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Password debe tener al menos 6 caracteres'),
+  confirmPassword: z.string().min(6, 'Confirmación de password requerida'),
+  coupleName: z.string().optional(),
+  acceptTerms: z.boolean().refine(val => val === true, 'Debes aceptar los términos'),
 }).refine(data => data.password === data.confirmPassword, {
-  message: 'Las contraseñas no coinciden',
-  path: ['confirmPassword']
+  message: "Los passwords no coinciden",
+  path: ["confirmPassword"],
 });
 
 export const forgotPasswordSchema = z.object({
@@ -120,31 +111,19 @@ export const resetPasswordSchema = z.object({
 });
 
 /**
- * Esquemas para transacciones financieras
+ * Validaciones para transacciones financieras - ARREGLADO
  */
 export const transactionSchema = z.object({
-  amount: z.number()
-    .positive('El monto debe ser mayor a 0')
-    .max(999999.99, 'El monto máximo es €999,999.99'),
-  
-  description: z.string()
-    .min(3, 'La descripción debe tener al menos 3 caracteres')
-    .max(100, 'La descripción no puede superar 100 caracteres'),
-  
-  type: z.enum(TRANSACTION_TYPES, {
-    errorMap: () => ({ message: 'Tipo de transacción inválido' })
+  amount: z.number().positive('El monto debe ser positivo'),
+  description: z.string().min(1, 'La descripción es requerida'),
+  categoryId: z.string().min(1, 'La categoría es requerida'), // Cambiado de cuid() a string simple
+  type: z.enum(['INCOME', 'EXPENSE'], {
+    errorMap: () => ({ message: 'Tipo debe ser INCOME o EXPENSE' })
   }),
-  
-  categoryId: z.string().cuid('ID de categoría inválido'),
-  
-  date: z.date({
-    required_error: 'La fecha es requerida',
-    invalid_type_error: 'Formato de fecha inválido'
-  }),
-  
-  notes: z.string().max(500, 'Las notas no pueden superar 500 caracteres').optional(),
-  location: z.string().max(100, 'La ubicación no puede superar 100 caracteres').optional(),
-  receipt: z.string().url('URL de recibo inválida').optional(),
+  date: z.string().min(1, 'La fecha es requerida'), // Cambiado de date() a string
+  notes: z.string().optional(),
+  location: z.string().optional(),
+  receipt: z.string().optional(),
 });
 
 export const transactionUpdateSchema = transactionSchema.partial();
@@ -177,67 +156,29 @@ export const transactionFiltersSchema = z.object({
 });
 
 /**
- * Esquemas para categorías
+ * Validaciones para categorías
  */
 export const categorySchema = z.object({
-  name: z.string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
-    .max(50, 'El nombre no puede superar 50 caracteres'),
-  
-  description: z.string()
-    .max(200, 'La descripción no puede superar 200 caracteres')
-    .optional(),
-  
-  icon: z.string()
-    .min(1, 'El icono es requerido')
-    .max(50, 'Nombre de icono demasiado largo'),
-  
-  color: z.string()
-    .regex(/^#[0-9A-F]{6}$/i, 'Color debe ser un hex válido (#RRGGBB)'),
-  
-  type: z.enum(TRANSACTION_TYPES, {
-    errorMap: () => ({ message: 'Tipo de categoría inválido' })
-  }),
+  name: z.string().min(1, 'El nombre es requerido'),
+  description: z.string().optional(),
+  icon: z.string().min(1, 'El icono es requerido'),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Color debe ser hexadecimal válido'),
+  type: z.enum(['INCOME', 'EXPENSE']),
 });
 
 export const categoryUpdateSchema = categorySchema.partial();
 
 /**
- * Esquemas para presupuestos
+ * Validaciones para presupuestos
  */
 export const budgetSchema = z.object({
-  name: z.string()
-    .min(3, 'El nombre debe tener al menos 3 caracteres')
-    .max(100, 'El nombre no puede superar 100 caracteres'),
-  
-  amount: z.number()
-    .positive('El monto debe ser mayor a 0')
-    .max(999999.99, 'El monto máximo es €999,999.99'),
-  
+  name: z.string().min(1, 'El nombre es requerido'),
+  amount: z.number().positive('El monto debe ser positivo'),
   categoryId: z.string().cuid('ID de categoría inválido'),
-  
-  period: z.enum(BUDGET_PERIODS, {
-    errorMap: () => ({ message: 'Período de presupuesto inválido' })
-  }),
-  
-  startDate: z.date({
-    required_error: 'La fecha de inicio es requerida'
-  }),
-  
+  period: z.enum(['WEEKLY', 'MONTHLY', 'YEARLY']),
+  startDate: z.date(),
   endDate: z.date().optional(),
-  
-  alertThreshold: z.number()
-    .min(0.1, 'El umbral mínimo es 10%')
-    .max(1, 'El umbral máximo es 100%')
-    .optional(),
-}).refine((data) => {
-  if (data.endDate) {
-    return data.startDate < data.endDate;
-  }
-  return true;
-}, {
-  message: 'La fecha de fin debe ser posterior a la fecha de inicio',
-  path: ['endDate']
+  alertThreshold: z.number().min(0).max(1).optional(),
 });
 
 // Esquema de actualización de presupuesto (sin refine para permitir partial)
@@ -271,31 +212,17 @@ const baseBudgetSchema = z.object({
 export const budgetUpdateSchema = baseBudgetSchema.partial();
 
 /**
- * Esquemas para objetivos de ahorro
+ * Validaciones para objetivos de ahorro
  */
 export const savingsGoalSchema = z.object({
-  name: z.string()
-    .min(3, 'El nombre debe tener al menos 3 caracteres')
-    .max(100, 'El nombre no puede superar 100 caracteres'),
-  
-  description: z.string()
-    .max(500, 'La descripción no puede superar 500 caracteres')
-    .optional(),
-  
-  targetAmount: z.number()
-    .positive('El monto objetivo debe ser mayor a 0')
-    .max(9999999.99, 'El monto máximo es €9,999,999.99'),
-  
-  targetDate: z.date().optional(),
-  
-  icon: z.string().max(50, 'Nombre de icono demasiado largo').optional(),
-  color: z.string()
-    .regex(/^#[0-9A-F]{6}$/i, 'Color debe ser un hex válido (#RRGGBB)')
-    .optional(),
-  
-  priority: z.enum(PRIORITIES, {
-    errorMap: () => ({ message: 'Prioridad inválida' })
-  }).default('MEDIUM'),
+  name: z.string().min(1, 'El nombre es requerido'),
+  description: z.string().optional(),
+  targetAmount: z.number().positive('El monto objetivo debe ser positivo'),
+  currentAmount: z.number().min(0, 'El monto actual no puede ser negativo').default(0),
+  targetDate: z.string().optional(), // Como string ISO
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
+  icon: z.string().optional(),
+  color: z.string().optional(),
 });
 
 export const savingsGoalUpdateSchema = savingsGoalSchema.partial();
@@ -309,30 +236,17 @@ export const contributionSchema = z.object({
 });
 
 /**
- * Esquemas para configuraciones de usuario
+ * Validaciones para configuraciones de usuario
  */
 export const userSettingsSchema = z.object({
-  theme: z.enum(THEMES, {
-    errorMap: () => ({ message: 'Tema inválido' })
-  }).default('LIGHT'),
-  
-  language: z.string()
-    .length(2, 'Código de idioma debe tener 2 caracteres')
-    .default('es'),
-  
-  currency: z.string()
-    .length(3, 'Código de moneda debe tener 3 caracteres')
-    .default('EUR'),
-  
+  theme: z.enum(['LIGHT', 'DARK', 'SYSTEM']).default('LIGHT'),
+  language: z.string().default('es'),
+  currency: z.string().default('EUR'),
   emailNotifications: z.boolean().default(true),
   pushNotifications: z.boolean().default(true),
   budgetAlerts: z.boolean().default(true),
   goalReminders: z.boolean().default(true),
   shareDataForAnalytics: z.boolean().default(false),
-  
-  chatbotPersonality: z.enum(CHATBOT_PERSONALITIES, {
-    errorMap: () => ({ message: 'Personalidad de chatbot inválida' })
-  }).default('FRIENDLY'),
 });
 
 export const sharedSettingsSchema = z.object({
@@ -388,18 +302,21 @@ export const invitePartnerSchema = z.object({
 });
 
 /**
- * Esquemas para chatbot y IA
+ * Validaciones para el chatbot
  */
 export const chatMessageSchema = z.object({
-  content: z.string()
-    .min(1, 'El mensaje no puede estar vacío')
-    .max(2000, 'El mensaje no puede tener más de 2000 caracteres')
-    .trim(),
+  content: z.string().min(1, 'El mensaje no puede estar vacío'),
   context: z.object({
     currentPage: z.string().optional(),
-    selectedFilters: z.record(z.unknown()).optional(),
-    recentActions: z.array(z.string()).optional()
-  }).optional()
+    userInfo: z.object({
+      name: z.string().optional(),
+      email: z.string().optional(),
+    }).optional(),
+  }).optional(),
+  conversationHistory: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).optional(),
 });
 
 /**

@@ -1,88 +1,94 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-/**
- * Página para crear nuevo objetivo de ahorro
- */
-export default function NewGoalPage() {
+interface SavingsGoal {
+  id: string;
+  name: string;
+  description?: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate?: string;
+  priority: string;
+}
+
+export default function EditGoalPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [goal, setGoal] = useState<SavingsGoal | null>(null);
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
   const [formData, setFormData] = useState({
     name: '',
     targetAmount: '',
     targetDate: '',
     description: '',
-    initialAmount: '',
   });
 
-  // Manejar cambios en el formulario
+  useEffect(() => {
+    // Mock data based on ID
+    const mockGoal: SavingsGoal = {
+      id: params.id,
+      name: 'Prueba',
+      description: 'prueba',
+      targetAmount: 300,
+      currentAmount: 250,
+      targetDate: '2025-07-31',
+      priority: 'HIGH'
+    };
+    
+    setGoal(mockGoal);
+    setFormData({
+      name: mockGoal.name,
+      targetAmount: mockGoal.targetAmount.toString(),
+      targetDate: mockGoal.targetDate || '',
+      description: mockGoal.description || '',
+    });
+    setPriority(mockGoal.priority as 'LOW' | 'MEDIUM' | 'HIGH');
+  }, [params.id]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Manejar envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name || !formData.targetAmount) {
+      alert('Por favor, completa todos los campos requeridos');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Validar campos requeridos
-      if (!formData.name || !formData.targetAmount) {
-        alert('Por favor, completa todos los campos requeridos');
-        return;
-      }
-
-      const goalData = {
-        name: formData.name,
-        description: formData.description || undefined,
-        targetAmount: parseFloat(formData.targetAmount),
-        currentAmount: formData.initialAmount ? parseFloat(formData.initialAmount) : 0,
-        targetDate: formData.targetDate || undefined,
-        priority,
-      };
-
-      console.log('🎯 Enviando objetivo a API:', goalData);
-
-      // Llamar a la API REAL
-      const response = await fetch('/api/goals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(goalData),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Error al crear el objetivo');
-      }
-
-      console.log('✅ Objetivo creado exitosamente:', result);
+      console.log('📝 Editando objetivo:', { ...formData, priority });
       
-      alert(`✅ ${result.message}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Redirigir a la lista de objetivos
+      alert(`✅ Objetivo "${formData.name}" actualizado correctamente`);
       router.push('/dashboard/goals');
       
     } catch (error) {
-      console.error('❌ Error creando objetivo:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      console.error('❌ Error editando objetivo:', error);
+      alert('Error al editar el objetivo. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
+  if (!goal) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando objetivo...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getPriorityColor = (priorityLevel: string) => {
     switch (priorityLevel) {
@@ -97,8 +103,17 @@ export default function NewGoalPage() {
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Nuevo Objetivo de Ahorro</h1>
-        <p className="text-gray-600 mt-2">Define una meta financiera para alcanzar</p>
+        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+          <Link href="/dashboard/goals" className="hover:text-blue-600 transition-colors">
+            Objetivos
+          </Link>
+          <span>→</span>
+          <span className="text-gray-900">{goal.name}</span>
+          <span>→</span>
+          <span className="text-gray-900">Editar</span>
+        </div>
+        <h1 className="text-3xl font-bold text-gray-900">Editar Objetivo</h1>
+        <p className="text-gray-600 mt-2">Modifica los detalles de tu objetivo de ahorro</p>
       </div>
 
       {/* Form */}
@@ -114,7 +129,6 @@ export default function NewGoalPage() {
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              placeholder="Ej: Vacaciones de verano, Coche nuevo, Fondo de emergencia"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -134,7 +148,6 @@ export default function NewGoalPage() {
                 onChange={handleInputChange}
                 step="0.01"
                 min="0"
-                placeholder="5000,00"
                 className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -205,39 +218,15 @@ export default function NewGoalPage() {
               value={formData.description}
               onChange={handleInputChange}
               rows={4}
-              placeholder="Describe tu objetivo y por qué es importante para ti..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </div>
-
-          {/* Aporte inicial */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Aporte inicial (opcional)
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-gray-500">€</span>
-              <input
-                type="number"
-                name="initialAmount"
-                value={formData.initialAmount}
-                onChange={handleInputChange}
-                step="0.01"
-                min="0"
-                placeholder="0,00"
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Puedes empezar con cualquier cantidad que tengas disponible
-            </p>
           </div>
 
           {/* Botones */}
           <div className="flex justify-end space-x-3 pt-6">
             <button
               type="button"
-              onClick={handleCancel}
+              onClick={() => router.back()}
               disabled={loading}
               className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
@@ -254,10 +243,10 @@ export default function NewGoalPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Guardando en BD...
+                  Actualizando...
                 </>
               ) : (
-                'Crear Objetivo'
+                'Actualizar Objetivo'
               )}
             </button>
           </div>

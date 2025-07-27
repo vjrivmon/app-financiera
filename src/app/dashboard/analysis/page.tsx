@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 /**
  * Página de Análisis Financiero
@@ -46,9 +47,12 @@ export default async function AnalysisPage() {
           Una vez que tengas transacciones, aquí verás gráficos y análisis detallados de tus finanzas.
         </p>
 
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+        <Link 
+          href="/dashboard/analysis/tutorial"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-block"
+        >
           Ver Tutorial
-        </button>
+        </Link>
       </div>
     </div>
   );
