@@ -48,18 +48,9 @@ const nextConfig = {
     ];
   },
   
-  // Webpack optimizations
+  // Webpack optimizations - using Next.js defaults
   webpack: (config) => {
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendors',
-          chunks: 'all',
-        },
-      },
-    };
+    // Permitir que Next.js maneje el code splitting automáticamente
     return config;
   },
   

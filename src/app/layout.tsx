@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { SessionProvider } from 'next-auth/react';
-import { Toaster } from 'react-hot-toast';
+import ClientProviders from '@/components/providers/ClientProviders';
 
 import './globals.css';
 
@@ -111,46 +110,15 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        {/* Provider de sesión para NextAuth.js */}
-        <SessionProvider>
+        <ClientProviders>
           {/* Layout principal de la aplicación */}
           <div className="min-h-screen bg-gray-50">
             {/* Área de contenido principal */}
             <main className="relative">
               {children}
             </main>
-            
-            {/* Sistema de notificaciones toast */}
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#ffffff',
-                  color: '#374151',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  boxShadow: '0 4px 16px 0 rgba(0, 0, 0, 0.08)',
-                },
-                success: {
-                  iconTheme: {
-                    primary: '#22c55e',
-                    secondary: '#ffffff',
-                  },
-                },
-                error: {
-                  iconTheme: {
-                    primary: '#ef4444',
-                    secondary: '#ffffff',
-                  },
-                },
-              }}
-            />
           </div>
-        </SessionProvider>
+        </ClientProviders>
         
         {/* Scripts de terceros y analytics se cargarían aquí */}
         {process.env.NODE_ENV === 'production' && (
