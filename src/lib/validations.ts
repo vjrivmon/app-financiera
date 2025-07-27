@@ -4,14 +4,29 @@
  */
 
 import { z } from 'zod';
-import { 
-  TransactionType, 
-  BudgetPeriod, 
-  Priority, 
-  Theme, 
-  ChatbotPersonality, 
-  SplitMethod 
-} from '@prisma/client';
+
+/**
+ * Esquemas de validación para la aplicación financiera de parejas
+ * Incluye validaciones robustas con mensajes de error en español
+ */
+
+// Definir constantes para tipos válidos (equivalent a enums)
+export const TRANSACTION_TYPES = ['INCOME', 'EXPENSE'] as const;
+export const BUDGET_PERIODS = ['WEEKLY', 'MONTHLY', 'YEARLY'] as const;
+export const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'] as const;
+export const THEMES = ['LIGHT', 'DARK', 'SYSTEM'] as const;
+export const CHATBOT_PERSONALITIES = ['PROFESSIONAL', 'FRIENDLY', 'MOTIVATIONAL', 'CASUAL'] as const;
+export const SPLIT_METHODS = ['EQUAL', 'PROPORTIONAL', 'CUSTOM'] as const;
+export const RECURRENCE_FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
+
+// Crear tipos TypeScript a partir de las constantes
+export type TransactionType = typeof TRANSACTION_TYPES[number];
+export type BudgetPeriod = typeof BUDGET_PERIODS[number];
+export type Priority = typeof PRIORITIES[number];
+export type Theme = typeof THEMES[number];
+export type ChatbotPersonality = typeof CHATBOT_PERSONALITIES[number];
+export type SplitMethod = typeof SPLIT_METHODS[number];
+export type RecurrenceFrequency = typeof RECURRENCE_FREQUENCIES[number];
 
 /**
  * Validaciones para monedas y importes financieros
@@ -61,11 +76,9 @@ const dateSchema = z.date({
   invalid_type_error: 'Introduce una fecha válida'
 });
 
-const futureDateSchema = z.date()
-  .refine(date => date > new Date(), 'La fecha debe ser futura');
-
-const pastOrPresentDateSchema = z.date()
-  .refine(date => date <= new Date(), 'La fecha no puede ser futura');
+// Esquemas de fecha validados (se pueden usar cuando sea necesario)
+// const futureDateSchema = z.date().refine(date => date > new Date(), 'La fecha debe ser futura');
+// const pastOrPresentDateSchema = z.date().refine(date => date <= new Date(), 'La fecha no puede ser futura');
 
 /**
  * Esquemas de autenticación
@@ -110,30 +123,28 @@ export const resetPasswordSchema = z.object({
  * Esquemas para transacciones financieras
  */
 export const transactionSchema = z.object({
-  amount: currencySchema,
+  amount: z.number()
+    .positive('El monto debe ser mayor a 0')
+    .max(999999.99, 'El monto máximo es €999,999.99'),
+  
   description: z.string()
-    .min(1, 'La descripción es obligatoria')
-    .max(200, 'La descripción no puede tener más de 200 caracteres')
-    .trim(),
-  categoryId: z.string()
-    .min(1, 'La categoría es obligatoria')
-    .cuid('ID de categoría inválido'),
-  type: z.nativeEnum(TransactionType, {
-    required_error: 'El tipo de transacción es obligatorio',
-    invalid_type_error: 'Tipo de transacción inválido'
+    .min(3, 'La descripción debe tener al menos 3 caracteres')
+    .max(100, 'La descripción no puede superar 100 caracteres'),
+  
+  type: z.enum(TRANSACTION_TYPES, {
+    errorMap: () => ({ message: 'Tipo de transacción inválido' })
   }),
-  date: pastOrPresentDateSchema,
-  notes: z.string()
-    .max(1000, 'Las notas no pueden tener más de 1000 caracteres')
-    .trim()
-    .optional(),
-  location: z.string()
-    .max(200, 'La ubicación no puede tener más de 200 caracteres')
-    .trim()
-    .optional(),
-  receipt: z.string()
-    .url('URL de recibo inválida')
-    .optional()
+  
+  categoryId: z.string().cuid('ID de categoría inválido'),
+  
+  date: z.date({
+    required_error: 'La fecha es requerida',
+    invalid_type_error: 'Formato de fecha inválido'
+  }),
+  
+  notes: z.string().max(500, 'Las notas no pueden superar 500 caracteres').optional(),
+  location: z.string().max(100, 'La ubicación no puede superar 100 caracteres').optional(),
+  receipt: z.string().url('URL de recibo inválida').optional(),
 });
 
 export const transactionUpdateSchema = transactionSchema.partial();
@@ -142,7 +153,7 @@ export const transactionFiltersSchema = z.object({
   startDate: dateSchema.optional(),
   endDate: dateSchema.optional(),
   categoryIds: z.array(z.string().cuid()).optional(),
-  type: z.nativeEnum(TransactionType).optional(),
+  type: z.enum(TRANSACTION_TYPES).optional(),
   userId: z.string().cuid().optional(),
   minAmount: optionalCurrencySchema,
   maxAmount: optionalCurrencySchema,
@@ -169,16 +180,24 @@ export const transactionFiltersSchema = z.object({
  * Esquemas para categorías
  */
 export const categorySchema = z.object({
-  name: nameSchema,
-  description: descriptionSchema,
+  name: z.string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede superar 50 caracteres'),
+  
+  description: z.string()
+    .max(200, 'La descripción no puede superar 200 caracteres')
+    .optional(),
+  
   icon: z.string()
-    .min(1, 'El icono es obligatorio')
+    .min(1, 'El icono es requerido')
     .max(50, 'Nombre de icono demasiado largo'),
+  
   color: z.string()
-    .regex(/^#[0-9A-F]{6}$/i, 'Color hexadecimal inválido'),
-  type: z.nativeEnum(TransactionType, {
-    required_error: 'El tipo de categoría es obligatorio'
-  })
+    .regex(/^#[0-9A-F]{6}$/i, 'Color debe ser un hex válido (#RRGGBB)'),
+  
+  type: z.enum(TRANSACTION_TYPES, {
+    errorMap: () => ({ message: 'Tipo de categoría inválido' })
+  }),
 });
 
 export const categoryUpdateSchema = categorySchema.partial();
@@ -187,48 +206,96 @@ export const categoryUpdateSchema = categorySchema.partial();
  * Esquemas para presupuestos
  */
 export const budgetSchema = z.object({
-  name: nameSchema,
-  amount: currencySchema,
-  categoryId: z.string()
-    .min(1, 'La categoría es obligatoria')
-    .cuid('ID de categoría inválido'),
-  period: z.nativeEnum(BudgetPeriod, {
-    required_error: 'El período es obligatorio'
+  name: z.string()
+    .min(3, 'El nombre debe tener al menos 3 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres'),
+  
+  amount: z.number()
+    .positive('El monto debe ser mayor a 0')
+    .max(999999.99, 'El monto máximo es €999,999.99'),
+  
+  categoryId: z.string().cuid('ID de categoría inválido'),
+  
+  period: z.enum(BUDGET_PERIODS, {
+    errorMap: () => ({ message: 'Período de presupuesto inválido' })
   }),
-  startDate: dateSchema,
-  endDate: dateSchema.optional(),
-  alertThreshold: z.coerce
-    .number()
-    .min(0.1, 'El umbral debe ser al menos 10%')
-    .max(1, 'El umbral no puede superar 100%')
-    .optional()
-}).refine(data => {
+  
+  startDate: z.date({
+    required_error: 'La fecha de inicio es requerida'
+  }),
+  
+  endDate: z.date().optional(),
+  
+  alertThreshold: z.number()
+    .min(0.1, 'El umbral mínimo es 10%')
+    .max(1, 'El umbral máximo es 100%')
+    .optional(),
+}).refine((data) => {
   if (data.endDate) {
     return data.startDate < data.endDate;
   }
   return true;
 }, {
-  message: 'La fecha de fin debe ser posterior a la de inicio',
+  message: 'La fecha de fin debe ser posterior a la fecha de inicio',
   path: ['endDate']
 });
 
-export const budgetUpdateSchema = budgetSchema.partial();
+// Esquema de actualización de presupuesto (sin refine para permitir partial)
+const baseBudgetSchema = z.object({
+  name: z.string()
+    .min(3, 'El nombre debe tener al menos 3 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres'),
+  
+  amount: z.number()
+    .positive('El monto debe ser mayor a 0')
+    .max(999999.99, 'El monto máximo es €999,999.99'),
+  
+  categoryId: z.string().cuid('ID de categoría inválido'),
+  
+  period: z.enum(BUDGET_PERIODS, {
+    errorMap: () => ({ message: 'Período de presupuesto inválido' })
+  }),
+  
+  startDate: z.date({
+    required_error: 'La fecha de inicio es requerida'
+  }),
+  
+  endDate: z.date().optional(),
+  
+  alertThreshold: z.number()
+    .min(0.1, 'El umbral mínimo es 10%')
+    .max(1, 'El umbral máximo es 100%')
+    .optional(),
+});
+
+export const budgetUpdateSchema = baseBudgetSchema.partial();
 
 /**
  * Esquemas para objetivos de ahorro
  */
 export const savingsGoalSchema = z.object({
-  name: nameSchema,
-  description: descriptionSchema,
-  targetAmount: currencySchema,
-  targetDate: futureDateSchema.optional(),
-  icon: z.string()
-    .max(50, 'Nombre de icono demasiado largo')
+  name: z.string()
+    .min(3, 'El nombre debe tener al menos 3 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres'),
+  
+  description: z.string()
+    .max(500, 'La descripción no puede superar 500 caracteres')
     .optional(),
+  
+  targetAmount: z.number()
+    .positive('El monto objetivo debe ser mayor a 0')
+    .max(9999999.99, 'El monto máximo es €9,999,999.99'),
+  
+  targetDate: z.date().optional(),
+  
+  icon: z.string().max(50, 'Nombre de icono demasiado largo').optional(),
   color: z.string()
-    .regex(/^#[0-9A-F]{6}$/i, 'Color hexadecimal inválido')
+    .regex(/^#[0-9A-F]{6}$/i, 'Color debe ser un hex válido (#RRGGBB)')
     .optional(),
-  priority: z.nativeEnum(Priority).default('MEDIUM')
+  
+  priority: z.enum(PRIORITIES, {
+    errorMap: () => ({ message: 'Prioridad inválida' })
+  }).default('MEDIUM'),
 });
 
 export const savingsGoalUpdateSchema = savingsGoalSchema.partial();
@@ -245,36 +312,54 @@ export const contributionSchema = z.object({
  * Esquemas para configuraciones de usuario
  */
 export const userSettingsSchema = z.object({
-  theme: z.nativeEnum(Theme).default('LIGHT'),
+  theme: z.enum(THEMES, {
+    errorMap: () => ({ message: 'Tema inválido' })
+  }).default('LIGHT'),
+  
   language: z.string()
-    .min(2, 'Código de idioma inválido')
-    .max(5, 'Código de idioma inválido')
+    .length(2, 'Código de idioma debe tener 2 caracteres')
     .default('es'),
+  
   currency: z.string()
-    .min(3, 'Código de moneda inválido')
-    .max(3, 'Código de moneda inválido')
+    .length(3, 'Código de moneda debe tener 3 caracteres')
     .default('EUR'),
+  
   emailNotifications: z.boolean().default(true),
   pushNotifications: z.boolean().default(true),
   budgetAlerts: z.boolean().default(true),
   goalReminders: z.boolean().default(true),
   shareDataForAnalytics: z.boolean().default(false),
-  chatbotPersonality: z.nativeEnum(ChatbotPersonality).default('FRIENDLY')
+  
+  chatbotPersonality: z.enum(CHATBOT_PERSONALITIES, {
+    errorMap: () => ({ message: 'Personalidad de chatbot inválida' })
+  }).default('FRIENDLY'),
 });
 
 export const sharedSettingsSchema = z.object({
-  splitMethod: z.nativeEnum(SplitMethod).default('EQUAL'),
+  splitMethod: z.enum(SPLIT_METHODS, {
+    errorMap: () => ({ message: 'Método de división inválido' })
+  }).default('EQUAL'),
+  
   defaultCurrency: z.string()
-    .min(3, 'Código de moneda inválido')
-    .max(3, 'Código de moneda inválido')
+    .length(3, 'Código de moneda debe tener 3 caracteres')
     .default('EUR'),
-  budgetCycle: z.nativeEnum(BudgetPeriod).default('MONTHLY'),
+  
+  budgetCycle: z.enum(BUDGET_PERIODS, {
+    errorMap: () => ({ message: 'Ciclo de presupuesto inválido' })
+  }).default('MONTHLY'),
+  
   budgetStartDay: z.number()
-    .min(1, 'El día debe ser entre 1 y 31')
-    .max(31, 'El día debe ser entre 1 y 31')
+    .int('Debe ser un número entero')
+    .min(1, 'Día mínimo es 1')
+    .max(31, 'Día máximo es 31')
     .default(1),
+  
   sharedGoalNotifications: z.boolean().default(true),
-  largeExpenseThreshold: optionalCurrencySchema
+  
+  largeExpenseThreshold: z.number()
+    .positive('El umbral debe ser mayor a 0')
+    .max(99999.99, 'Umbral máximo es €99,999.99')
+    .optional(),
 });
 
 /**
@@ -357,35 +442,41 @@ export const paginationSchema = z.object({
  * Esquemas para transacciones recurrentes
  */
 export const recurringTransactionSchema = z.object({
-  name: nameSchema,
-  amount: currencySchema,
-  type: z.nativeEnum(TransactionType),
-  categoryId: z.string().cuid('ID de categoría inválido'),
-  frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'], {
-    required_error: 'La frecuencia es obligatoria'
+  name: z.string()
+    .min(3, 'El nombre debe tener al menos 3 caracteres')
+    .max(100, 'El nombre no puede superar 100 caracteres'),
+  
+  amount: z.number()
+    .positive('El monto debe ser mayor a 0')
+    .max(999999.99, 'El monto máximo es €999,999.99'),
+  
+  type: z.enum(TRANSACTION_TYPES, {
+    errorMap: () => ({ message: 'Tipo de transacción inválido' })
   }),
-  startDate: dateSchema,
-  endDate: futureDateSchema.optional(),
+  
+  frequency: z.enum(RECURRENCE_FREQUENCIES, {
+    errorMap: () => ({ message: 'Frecuencia inválida' })
+  }),
+  
+  categoryId: z.string().cuid('ID de categoría inválido'),
+  
+  startDate: z.date({
+    required_error: 'La fecha de inicio es requerida'
+  }),
+  
+  endDate: z.date().optional(),
+  
   dayOfMonth: z.number()
-    .min(1, 'El día debe estar entre 1 y 31')
-    .max(31, 'El día debe estar entre 1 y 31')
+    .int('Debe ser un número entero')
+    .min(1, 'Día mínimo es 1')
+    .max(31, 'Día máximo es 31')
     .optional(),
+  
   dayOfWeek: z.number()
-    .min(0, 'El día de la semana debe estar entre 0 y 6')
-    .max(6, 'El día de la semana debe estar entre 0 y 6')
-    .optional()
-}).refine(data => {
-  // Validar que dayOfMonth se especifica para frecuencia MONTHLY
-  if (data.frequency === 'MONTHLY' && !data.dayOfMonth) {
-    return false;
-  }
-  // Validar que dayOfWeek se especifica para frecuencia WEEKLY
-  if (data.frequency === 'WEEKLY' && data.dayOfWeek === undefined) {
-    return false;
-  }
-  return true;
-}, {
-  message: 'Configuración de frecuencia incompleta'
+    .int('Debe ser un número entero')
+    .min(0, 'Día de la semana mínimo es 0 (Domingo)')
+    .max(6, 'Día de la semana máximo es 6 (Sábado)')
+    .optional(),
 });
 
 /**
@@ -406,3 +497,15 @@ export type ExportOptionsFormData = z.infer<typeof exportOptionsSchema>;
 export type PaginationParams = z.infer<typeof paginationSchema>;
 export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;
 export type RecurringTransactionFormData = z.infer<typeof recurringTransactionSchema>; 
+
+// Exportar tipos inferidos
+export type TransactionInput = z.infer<typeof transactionSchema>;
+export type CategoryInput = z.infer<typeof categorySchema>;
+export type BudgetInput = z.infer<typeof budgetSchema>;
+export type SavingsGoalInput = z.infer<typeof savingsGoalSchema>;
+export type SavingsContributionInput = z.infer<typeof contributionSchema>;
+export type UserSettingsInput = z.infer<typeof userSettingsSchema>;
+export type SharedSettingsInput = z.infer<typeof sharedSettingsSchema>;
+export type RecurringTransactionInput = z.infer<typeof recurringTransactionSchema>;
+export type SignUpInput = z.infer<typeof signUpSchema>;
+export type SignInInput = z.infer<typeof signInSchema>; 

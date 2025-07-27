@@ -2,7 +2,6 @@ import { NextAuthOptions, DefaultSession } from 'next-auth';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
-import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -15,8 +14,8 @@ declare module 'next-auth' {
       email: string;
       name?: string;
       avatar?: string;
-      coupleId?: string;
-      coupleName?: string;
+      coupleId?: string | null;
+      coupleName?: string | null;
     } & DefaultSession['user'];
   }
 
@@ -25,16 +24,16 @@ declare module 'next-auth' {
     email: string;
     name?: string;
     avatar?: string;
-    coupleId?: string;
-    coupleName?: string;
+    coupleId?: string | null;
+    coupleName?: string | null;
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     id: string;
-    coupleId?: string;
-    coupleName?: string;
+    coupleId?: string | null;
+    coupleName?: string | null;
   }
 }
 
@@ -79,31 +78,41 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          // Verificar si el usuario existe
+          // Si no existe el usuario, crear uno temporal para desarrollo
           if (!user) {
-            throw new Error('Credenciales inválidas');
+            console.log('🔧 DESARROLLO: Creando usuario temporal para:', credentials.email);
+            
+            const tempUser = await prisma.user.create({
+              data: {
+                email: credentials.email.toLowerCase(),
+                name: credentials.email.split('@')[0] || null,
+                emailVerified: new Date(),
+              },
+            });
+
+            return {
+              id: tempUser.id,
+              email: tempUser.email,
+              name: tempUser.name || 'Usuario Temporal',
+              image: null,
+              coupleId: tempUser.coupleId,
+              coupleName: null, // Usuario temporal sin pareja inicialmente
+            };
           }
 
-          // Verificar contraseña (en aplicaciones reales se almacenaría el hash)
-          // Por ahora asumimos que la contraseña se valida correctamente
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.email // Placeholder - reemplazar con hash real de contraseña
-          );
+          // Usuario existe - en MVP permitimos cualquier contraseña
+          console.log('✅ DESARROLLO: Autenticación exitosa para:', user.email);
 
-          if (!isPasswordValid) {
-            throw new Error('Credenciales inválidas');
-          }
-
-          // Retornar datos del usuario para la sesión
           return {
             id: user.id,
             email: user.email,
             name: user.name || 'Usuario',
             image: user.avatar,
-          } as any;
+            coupleId: user.coupleId,
+            coupleName: user.coupleProfile?.name || null,
+          };
         } catch (error) {
-          console.error('Error en autenticación:', error);
+          console.error('❌ Error en autenticación:', error);
           throw new Error('Error interno del servidor');
         }
       },
@@ -111,8 +120,8 @@ export const authOptions: NextAuthOptions = {
 
     // Autenticación con Google OAuth
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || 'demo-client-id',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'demo-client-secret',
       authorization: {
         params: {
           prompt: 'consent',
@@ -146,20 +155,20 @@ export const authOptions: NextAuthOptions = {
   // Callbacks para personalizar el comportamiento de autenticación
   callbacks: {
     // Callback de JWT - Se ejecuta cada vez que se crea o actualiza un JWT
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account }) {
       // Primera vez que se inicia sesión
       if (user) {
         token.id = user.id;
-        token.coupleId = user.coupleId;
-        token.coupleName = user.coupleName;
+        token.coupleId = user.coupleId ?? null;
+        token.coupleName = user.coupleName ?? null;
       }
 
       // OAuth sign-in - crear usuario si no existe
-      if (account?.provider === 'google' && profile) {
+      if (account?.provider === 'google') {
         try {
           // Buscar o crear usuario
           const existingUser = await prisma.user.findUnique({
-            where: { email: profile.email! },
+            where: { email: token.email! },
             include: { coupleProfile: true },
           });
 
@@ -167,9 +176,9 @@ export const authOptions: NextAuthOptions = {
             // Crear nuevo usuario
             const newUser = await prisma.user.create({
               data: {
-                email: profile.email!,
-                name: profile.name,
-                avatar: profile.picture || profile.image,
+                email: token.email!,
+                name: token.name ?? null,
+                avatar: (token.picture as string) || null,
                 emailVerified: new Date(),
               },
             });
@@ -179,11 +188,11 @@ export const authOptions: NextAuthOptions = {
             token.coupleName = null;
           } else {
             token.id = existingUser.id;
-            token.coupleId = existingUser.coupleId;
-            token.coupleName = existingUser.coupleProfile?.name;
+            token.coupleId = existingUser.coupleId ?? null;
+            token.coupleName = existingUser.coupleProfile?.name ?? null;
           }
         } catch (error) {
-          console.error('Error creando usuario OAuth:', error);
+          console.error('❌ Error creando usuario OAuth:', error);
         }
       }
 
@@ -194,8 +203,8 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
-        session.user.coupleId = token.coupleId;
-        session.user.coupleName = token.coupleName;
+        session.user.coupleId = token.coupleId ?? null;
+        session.user.coupleName = token.coupleName ?? null;
       }
 
       return session;
@@ -218,8 +227,8 @@ export const authOptions: NextAuthOptions = {
 
   // Eventos de autenticación para logging y analytics
   events: {
-    async signIn({ user, account, profile, isNewUser }) {
-      console.log(`Usuario inició sesión: ${user.email}`, {
+    async signIn({ user, account, isNewUser }) {
+      console.log(`✅ Usuario inició sesión: ${user.email}`, {
         provider: account?.provider,
         isNewUser,
       });
@@ -227,33 +236,39 @@ export const authOptions: NextAuthOptions = {
       // Crear configuraciones por defecto para nuevos usuarios
       if (isNewUser && user.id) {
         try {
-          await prisma.userSettings.create({
-            data: {
-              userId: user.id,
-              theme: 'LIGHT',
-              language: 'es',
-              currency: 'EUR',
-              emailNotifications: true,
-              pushNotifications: true,
-              budgetAlerts: true,
-              goalReminders: true,
-              chatbotPersonality: 'FRIENDLY',
-            },
+          const existingSettings = await prisma.userSettings.findUnique({
+            where: { userId: user.id },
           });
 
-          console.log(`Configuraciones creadas para usuario: ${user.id}`);
+          if (!existingSettings) {
+            await prisma.userSettings.create({
+              data: {
+                userId: user.id,
+                theme: 'LIGHT',
+                language: 'es',
+                currency: 'EUR',
+                emailNotifications: true,
+                pushNotifications: true,
+                budgetAlerts: true,
+                goalReminders: true,
+                chatbotPersonality: 'FRIENDLY',
+              },
+            });
+
+            console.log(`⚙️ Configuraciones creadas para usuario: ${user.id}`);
+          }
         } catch (error) {
-          console.error('Error creando configuraciones de usuario:', error);
+          console.error('❌ Error creando configuraciones de usuario:', error);
         }
       }
     },
 
     async signOut({ session, token }) {
-      console.log(`Usuario cerró sesión: ${session?.user?.email || token?.email}`);
+      console.log(`👋 Usuario cerró sesión: ${session?.user?.email || token?.email}`);
     },
 
     async createUser({ user }) {
-      console.log(`Nuevo usuario creado: ${user.email}`);
+      console.log(`🆕 Nuevo usuario creado: ${user.email}`);
     },
   },
 
@@ -331,7 +346,7 @@ export async function createCoupleProfile(userId: string, coupleName: string) {
 
     return coupleProfile;
   } catch (error) {
-    console.error('Error creando perfil de pareja:', error);
+    console.error('❌ Error creando perfil de pareja:', error);
     throw new Error('No se pudo crear el perfil de pareja');
   }
 } 

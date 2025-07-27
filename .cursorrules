@@ -1,0 +1,334 @@
+# Cursor Rules - Budget Couple App
+# Estándares de desarrollo empresarial para aplicaciones financieras
+
+## 🎯 OVERVIEW
+Aplicación financiera para parejas construida con Next.js 14, TypeScript, Prisma, NextAuth.js y OpenAI.
+Enfoque en calidad empresarial, seguridad y experiencia de usuario.
+
+## 📋 TECH STACK
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript (strict mode)
+- **Database**: SQLite (development), PostgreSQL (production)
+- **ORM**: Prisma
+- **Auth**: NextAuth.js 4.24+
+- **Styling**: TailwindCSS
+- **Validation**: Zod
+- **AI**: OpenAI GPT-4
+- **UI**: Custom components + Headless UI
+
+## 🏗️ ARCHITECTURE PRINCIPLES
+
+### 1. **File Structure**
+```
+src/
+├── app/                 # Next.js App Router
+│   ├── (auth)/         # Grouped auth routes
+│   ├── dashboard/      # Protected dashboard
+│   └── api/           # API endpoints
+├── components/
+│   ├── ui/            # Reusable base components
+│   ├── dashboard/     # Dashboard-specific
+│   └── landing/       # Marketing components
+├── lib/               # Utilities & configurations
+├── types/             # TypeScript type definitions
+├── hooks/             # Custom React hooks
+└── validations/       # Zod schemas
+```
+
+### 2. **Component Standards**
+- **Naming**: PascalCase for components, camelCase for functions
+- **File naming**: PascalCase for component files
+- **Props**: Define interfaces for all component props
+- **Documentation**: JSDoc for all public functions/components
+
+### 3. **TypeScript Standards**
+- **Strict mode**: Always enabled
+- **No any**: Use proper typing
+- **Interfaces**: Prefer interfaces over types for objects
+- **Enums**: Use const assertions for better tree-shaking
+- **Imports**: Use absolute imports with @ alias
+
+## 🔒 SECURITY STANDARDS
+
+### Authentication & Authorization
+- Always validate session server-side for protected routes
+- Use NextAuth.js built-in CSRF protection
+- Implement proper redirect handling
+- Session cookies: httpOnly, sameSite, secure in production
+
+### Data Validation
+- **All inputs**: Validate with Zod schemas
+- **API endpoints**: Parse and validate request body
+- **Database**: Use Prisma for type-safe queries
+- **Frontend**: Validate forms before submission
+
+### Financial Data
+- Never expose sensitive financial data in logs
+- Use transactions for multi-step database operations
+- Implement audit logging for financial operations
+- Encrypt sensitive data at rest (production)
+
+## 💻 CODING STANDARDS
+
+### React Components
+```typescript
+'use client'; // Only when needed (client components)
+
+import { useState, useEffect } from 'react';
+import { SomeType } from '@/types';
+
+interface ComponentProps {
+  title: string;
+  onAction?: () => void;
+  children?: React.ReactNode;
+}
+
+/**
+ * Component description with business context
+ * @param props - Component properties
+ */
+export default function ComponentName({ title, onAction, children }: ComponentProps) {
+  // State declarations
+  const [loading, setLoading] = useState(false);
+  
+  // Event handlers
+  const handleSubmit = async () => {
+    // Implementation
+  };
+
+  return (
+    <div className="component-container">
+      {/* JSX */}
+    </div>
+  );
+}
+```
+
+### API Routes
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { schema } from '@/lib/validations';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Authentication check
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 2. Parse and validate
+    const body = await request.json();
+    const validatedData = schema.parse(body);
+
+    // 3. Business logic
+    const result = await prisma.model.create({
+      data: validatedData,
+    });
+
+    // 4. Response
+    return NextResponse.json({ success: true, data: result });
+
+  } catch (error) {
+    console.error('API Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+```
+
+### Database Operations
+```typescript
+// Use transactions for multi-step operations
+const result = await prisma.$transaction(async (tx) => {
+  const user = await tx.user.create({ data: userData });
+  const profile = await tx.profile.create({ data: { userId: user.id } });
+  return { user, profile };
+});
+
+// Include relations when needed
+const user = await prisma.user.findUnique({
+  where: { id },
+  include: {
+    coupleProfile: true,
+    settings: true,
+  },
+});
+```
+
+## 🎨 UI/UX STANDARDS
+
+### Design System
+- **Colors**: Use TailwindCSS design tokens
+- **Spacing**: Use consistent spacing scale (4, 8, 16, 24, 32px)
+- **Typography**: Consistent font sizes and weights
+- **Components**: Build reusable components in `/components/ui`
+
+### Accessibility
+- Semantic HTML elements
+- ARIA labels for interactive elements
+- Keyboard navigation support
+- Color contrast compliance (WCAG AA)
+- Screen reader friendly
+
+### Mobile-First
+- Design for mobile first, enhance for desktop
+- Use responsive breakpoints consistently
+- Touch-friendly button sizes (44px minimum)
+- Optimize for performance on mobile devices
+
+## 📊 PERFORMANCE STANDARDS
+
+### Bundle Optimization
+- Code splitting with dynamic imports
+- Tree-shaking friendly imports
+- Optimize images with next/image
+- Use Server Components when possible
+
+### Database Performance
+- Index frequently queried columns
+- Use select to limit returned fields
+- Implement pagination for lists
+- Cache static data appropriately
+
+### Monitoring
+- Error tracking with proper error boundaries
+- Performance monitoring for Core Web Vitals
+- API response time monitoring
+- Database query performance tracking
+
+## 🧪 TESTING STANDARDS
+
+### Unit Tests
+- Test business logic functions
+- Mock external dependencies
+- Use descriptive test names
+- Aim for 80%+ coverage on critical paths
+
+### Integration Tests
+- Test API endpoints
+- Test database operations
+- Test authentication flows
+- Use test database for isolation
+
+### E2E Tests
+- Test critical user journeys
+- Test cross-browser compatibility
+- Test responsive design
+- Automate deployment testing
+
+## 🚀 DEPLOYMENT STANDARDS
+
+### Environment Configuration
+- Use environment variables for all configs
+- Different configs for dev/staging/production
+- Secure secrets management
+- Database migration strategy
+
+### CI/CD Pipeline
+- Automated testing on every PR
+- Automated security scanning
+- Staged deployments (dev → staging → production)
+- Rollback strategy
+
+### Monitoring & Logging
+- Structured logging with context
+- Error alerting
+- Performance monitoring
+- Security event logging
+
+## 📚 DOCUMENTATION
+
+### Code Documentation
+- JSDoc for all public functions
+- README for each major module
+- API documentation with examples
+- Architecture decision records (ADRs)
+
+### User Documentation
+- Feature documentation
+- API documentation
+- Deployment guides
+- Troubleshooting guides
+
+## 🔄 DEVELOPMENT WORKFLOW
+
+### Git Workflow
+- Feature branches from main
+- Descriptive commit messages
+- PR reviews required
+- Squash and merge
+
+### Code Review Checklist
+- [ ] Follows coding standards
+- [ ] Has proper error handling
+- [ ] Includes tests
+- [ ] Updates documentation
+- [ ] Security considerations
+- [ ] Performance impact
+
+### Branch Naming
+- `feature/description`
+- `bugfix/description`
+- `hotfix/description`
+- `chore/description`
+
+### Commit Messages
+```
+type(scope): description
+
+Types: feat, fix, docs, style, refactor, test, chore
+Scope: auth, dashboard, api, db, ui
+Example: feat(auth): add Google OAuth integration
+```
+
+## 🚫 ANTI-PATTERNS TO AVOID
+
+### Code Quality
+- ❌ Using `any` type in TypeScript
+- ❌ Mixing client and server code
+- ❌ Missing error handling
+- ❌ Hardcoded values instead of constants
+- ❌ Directly mutating props or state
+
+### Security
+- ❌ Client-side only authentication checks
+- ❌ Exposing sensitive data in client bundles
+- ❌ Missing input validation
+- ❌ SQL injection vulnerabilities
+- ❌ Storing secrets in code
+
+### Performance
+- ❌ Large client-side bundles
+- ❌ N+1 database queries
+- ❌ Missing loading states
+- ❌ Unnecessary re-renders
+- ❌ Blocking main thread operations
+
+## 📈 SPECIFIC TO BUDGET COUPLE APP
+
+### Financial Data Handling
+- Always use proper number types for currency
+- Implement proper rounding for financial calculations
+- Use transactions for financial operations
+- Audit trail for all financial changes
+
+### Multi-User Considerations
+- Consider couple permissions for shared data
+- Implement proper data isolation
+- Handle concurrent user actions
+- Sync state between couple members
+
+### AI Integration
+- Validate AI responses before displaying
+- Implement fallback for AI failures
+- Context-aware AI responses
+- User privacy in AI interactions
+
+---
+
+**Remember**: Quality over speed. Security over convenience. User experience over developer convenience.
+
+These rules ensure our Budget Couple App meets enterprise-grade standards while delivering an exceptional user experience. 

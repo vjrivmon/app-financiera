@@ -1,9 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
 /**
- * Configuración global de Prisma Client para la aplicación financiera
- * Implementa el patrón singleton para optimizar las conexiones de base de datos
- * y evitar la creación múltiple de instancias durante el desarrollo
+ * Instancia global de Prisma Client optimizada para Next.js
+ * Evita múltiples conexiones en desarrollo con hot reload
  */
 
 const globalForPrisma = globalThis as unknown as {
@@ -11,34 +10,59 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /**
- * Instancia singleton de Prisma Client
- * Configurada con logging apropiado según el entorno
+ * Cliente de Prisma con configuración optimizada para aplicaciones financieras
+ * Incluye logging detallado en desarrollo y configuraciones de performance
  */
-export const prisma =
-  globalForPrisma.prisma ??
+export const prisma = globalForPrisma.prisma ?? 
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' 
       ? ['query', 'error', 'warn'] 
       : ['error'],
     
-    // Configuraciones de conexión optimizadas para aplicaciones financieras
+    // Configuración optimizada para aplicaciones financieras
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: process.env.DATABASE_URL!,
       },
     },
-    
-    // Configuraciones adicionales para producción
-    ...(process.env.NODE_ENV === 'production' && {
-      errorFormat: 'minimal',
-    }),
+
+    // Configuraciones adicionales para performance
+    errorFormat: 'pretty',
   });
 
-// En desarrollo, guardamos la instancia en globalThis para evitar
-// recreaciones innecesarias durante el hot reload
+// Evitar múltiples instancias en desarrollo
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
+
+/**
+ * Middleware para auditoría y logging de operaciones críticas
+ * Registra todas las operaciones financieras para compliance
+ */
+prisma.$use(async (params, next) => {
+  const before = Date.now();
+  
+  const result = await next(params);
+  
+  const after = Date.now();
+  
+  // Log de operaciones críticas en producción
+  if (process.env.NODE_ENV === 'production' && 
+      ['Transaction', 'Budget', 'SavingsGoal'].includes(params.model || '')) {
+    console.log(`⚡ ${params.model?.toUpperCase()} ${params.action} - ${after - before}ms`);
+  }
+  
+  return result;
+});
+
+/**
+ * Hook de cierre graceful para conexiones de base de datos
+ */
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
+
+export default prisma;
 
 /**
  * Función helper para manejar errores de Prisma de forma consistente

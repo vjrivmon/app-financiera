@@ -140,7 +140,7 @@ model Budget {
   id          String      @id @default(cuid())
   name        String
   amount      Float
-  period      String      // "MONTHLY", "WEEKLY", "YEARLY"
+  period      String      // "WEEKLY", "MONTHLY", "YEARLY"
   startDate   DateTime
   endDate     DateTime?   // null para presupuestos recurrentes
   isActive    Boolean     @default(true)
