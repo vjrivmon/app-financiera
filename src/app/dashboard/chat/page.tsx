@@ -76,7 +76,9 @@ export default function ChatPage() {
   // Función para enviar mensaje mejorada
   const handleSendMessage = async (messageContent?: string) => {
     const content = messageContent || inputValue.trim();
-    if (!content || isLoading) return;
+    if (!content || isLoading) {
+      return;
+    }
 
     // Crear mensaje del usuario
     const userMessage: Message = {
@@ -100,6 +102,12 @@ export default function ChatPage() {
         // Agregar más contexto aquí en el futuro
       };
 
+      // Transformar mensajes para la API (mapear 'sender' a 'role')
+      const apiConversationHistory = messages.slice(-5).map(msg => ({
+        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+        content: msg.content
+      }));
+
       // Llamar a la API del chatbot con contexto
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -109,7 +117,7 @@ export default function ChatPage() {
         body: JSON.stringify({ 
           content,
           context: userContext,
-          conversationHistory: messages.slice(-5) // Últimos 5 mensajes para contexto
+          conversationHistory: apiConversationHistory // Usar historial transformado
         }),
       });
 

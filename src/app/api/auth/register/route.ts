@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { signUpSchema } from '@/lib/validations';
 import { z } from 'zod';
@@ -28,9 +27,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Hashear la contraseña
-    const hashedPassword = await hash(validatedData.password, 12);
 
     // Crear transacción para asegurar consistencia de datos
     const result = await prisma.$transaction(async (tx) => {
@@ -131,16 +127,6 @@ export async function POST(request: NextRequest) {
         userSettings,
         coupleProfile,
       };
-    });
-
-    // Almacenar hash de contraseña de forma segura (simulado para MVP)
-    // En producción, esto se haría de manera más segura
-    await prisma.user.update({
-      where: { id: result.user.id },
-      data: {
-        // Guardar hash en un campo seguro (para MVP usamos el campo name como ejemplo)
-        // En producción se crearía un campo dedicado
-      },
     });
 
     // Log de auditoría

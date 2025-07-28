@@ -41,7 +41,8 @@ async function ensureDefaultCategories(coupleId: string) {
 }
 
 /**
- * Mapear nombres de categoría a IDs reales
+ * Función auxiliar para obtener el ID de categoría
+ * Busca categoría existente o usa "Otros" como fallback
  */
 async function getCategoryId(categoryName: string, coupleId: string): Promise<string> {
   const categoryMap: { [key: string]: string } = {
@@ -58,7 +59,7 @@ async function getCategoryId(categoryName: string, coupleId: string): Promise<st
   const displayName = categoryMap[categoryName] || categoryName;
   
   // Buscar la categoría existente
-  const category = await prisma.category.findFirst({
+  let category = await prisma.category.findFirst({
     where: {
       name: displayName,
       coupleId: coupleId
@@ -69,19 +70,46 @@ async function getCategoryId(categoryName: string, coupleId: string): Promise<st
     return category.id;
   }
 
-  // Si no existe, crear una nueva categoría "Otros"
-  const newCategory = await prisma.category.create({
-    data: {
+  // Si no existe, buscar la categoría "Otros" como fallback
+  category = await prisma.category.findFirst({
+    where: {
       name: 'Otros',
-      icon: '📦',
-      color: '#6B7280',
-      type: 'EXPENSE',
-      isDefault: true,
       coupleId: coupleId
     }
   });
 
-  return newCategory.id;
+  if (category) {
+    return category.id;
+  }
+
+  // Solo crear "Otros" si no existe ninguna
+  try {
+    const newCategory = await prisma.category.create({
+      data: {
+        name: 'Otros',
+        icon: '📦',
+        color: '#6B7280',
+        type: 'EXPENSE',
+        isDefault: true,
+        coupleId: coupleId
+      }
+    });
+    return newCategory.id;
+  } catch (error) {
+    // Si falla crear "Otros" (ya existe), buscarla de nuevo
+    const existingOtros = await prisma.category.findFirst({
+      where: {
+        name: 'Otros',
+        coupleId: coupleId
+      }
+    });
+    
+    if (existingOtros) {
+      return existingOtros.id;
+    }
+    
+    throw error;
+  }
 }
 
 /**

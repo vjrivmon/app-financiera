@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 /**
  * Página de Transacciones - Gestión financiera completa
@@ -46,9 +47,15 @@ export default async function TransactionsPage() {
           Comienza registrando tu primera transacción para ver tu actividad financiera aquí.
         </p>
 
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
-          + Nueva Transacción
-        </button>
+        <Link 
+          href="/dashboard/transactions/new"
+          className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Nueva Transacción
+        </Link>
       </div>
     </div>
   );

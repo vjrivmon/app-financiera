@@ -17,9 +17,9 @@ import {
 import Link from 'next/link';
 
 /**
- * Landing Page principal de Budget Couple App
- * Diseño inspirado en la aplicación Budget con enfoque minimalista
- * y orientado a parejas jóvenes que valoran el diseño visual cuidado
+ * Landing Page unificada con el diseño del dashboard
+ * Diseño coherente con la identidad visual de Budget Couple App
+ * Manteniendo el atractivo marketing pero con estilos consistentes
  */
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -39,10 +39,10 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
       <motion.nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100"
+        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200"
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -50,8 +50,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Heart className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900">Budget Couple</span>
@@ -65,12 +65,12 @@ export default function LandingPage() {
               <a href="#como-funciona" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Cómo Funciona
               </a>
-              <a href="#precios" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Precios
+              <a href="#testimonios" className="text-gray-600 hover:text-gray-900 transition-colors">
+                Testimonios
               </a>
               <Link 
                 href="/auth/signin"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-xl font-medium transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 Iniciar Sesión
               </Link>
@@ -93,7 +93,7 @@ export default function LandingPage() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <motion.div 
-            className="md:hidden bg-white border-t border-gray-100"
+            className="md:hidden bg-white border-t border-gray-200"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -105,12 +105,12 @@ export default function LandingPage() {
               <a href="#como-funciona" className="block text-gray-600 hover:text-gray-900">
                 Cómo Funciona
               </a>
-              <a href="#precios" className="block text-gray-600 hover:text-gray-900">
-                Precios
+              <a href="#testimonios" className="block text-gray-600 hover:text-gray-900">
+                Testimonios
               </a>
               <Link 
                 href="/auth/signin"
-                className="block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl font-medium text-center transition-colors"
+                className="block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-center transition-colors"
               >
                 Iniciar Sesión
               </Link>
@@ -120,7 +120,7 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+      <section className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             className="text-center max-w-4xl mx-auto"
@@ -133,7 +133,7 @@ export default function LandingPage() {
               variants={fadeInUp}
             >
               Finanzas en pareja
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">
+              <span className="block text-blue-600">
                 nunca fueron tan fáciles
               </span>
             </motion.h1>
@@ -151,18 +151,18 @@ export default function LandingPage() {
               variants={fadeInUp}
             >
               <Link 
-                href="/auth/signup"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 flex items-center space-x-2 hover:scale-105"
+                href="/auth/register"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center space-x-2 hover:scale-105"
               >
                 <span>Empezar Gratis</span>
                 <ArrowRight className="w-5 h-5" />
               </Link>
               
               <Link 
-                href="#demo"
-                className="border border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:bg-gray-50"
+                href="#caracteristicas"
+                className="border border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 hover:bg-gray-50"
               >
-                Ver Demo
+                Conocer más
               </Link>
             </motion.div>
 
@@ -175,7 +175,7 @@ export default function LandingPage() {
                 <span>Gratis para siempre</span>
               </div>
               <div className="flex items-center space-x-1">
-                <Shield className="w-4 h-4 text-blue-500" />
+                <Shield className="w-4 h-4 text-blue-600" />
                 <span>100% Seguro</span>
               </div>
               <div className="flex items-center space-x-1">
@@ -200,19 +200,19 @@ export default function LandingPage() {
                   <div className="w-64 h-[520px] bg-gray-900 rounded-[3rem] p-2 shadow-2xl">
                     <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
                       {/* Simulated app interface */}
-                      <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-20 flex items-center justify-center">
+                      <div className="bg-blue-600 h-20 flex items-center justify-center">
                         <span className="text-white font-semibold">Dashboard Pareja</span>
                       </div>
                       <div className="p-4 space-y-4">
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                           <div className="text-green-600 text-sm font-medium">Ingresos</div>
                           <div className="text-2xl font-bold text-green-700">€2,450</div>
                         </div>
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                           <div className="text-red-600 text-sm font-medium">Gastos</div>
                           <div className="text-2xl font-bold text-red-700">€1,890</div>
                         </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                           <div className="text-blue-600 text-sm font-medium">Ahorros</div>
                           <div className="text-2xl font-bold text-blue-700">€560</div>
                         </div>
@@ -226,17 +226,17 @@ export default function LandingPage() {
                   <div className="w-64 h-[520px] bg-gray-900 rounded-[3rem] p-2 shadow-2xl">
                     <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
                       {/* Simulated chat interface */}
-                      <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-20 flex items-center justify-center">
+                      <div className="bg-blue-600 h-20 flex items-center justify-center">
                         <span className="text-white font-semibold">Asistente IA</span>
                       </div>
                       <div className="p-4 space-y-3 text-sm">
-                        <div className="bg-gray-100 rounded-xl p-3">
+                        <div className="bg-gray-100 rounded-lg p-3">
                           <p>¿En qué categoría gastamos más este mes?</p>
                         </div>
-                        <div className="bg-blue-500 text-white rounded-xl p-3 ml-8">
+                        <div className="bg-blue-600 text-white rounded-lg p-3 ml-8">
                           <p>Este mes habéis gastado más en "Comida" con €420. ¿Os gustaría que os ayude a optimizar este gasto?</p>
                         </div>
-                        <div className="bg-gray-100 rounded-xl p-3">
+                        <div className="bg-gray-100 rounded-lg p-3">
                           <p>Sí, danos consejos</p>
                         </div>
                       </div>
@@ -261,7 +261,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="caracteristicas" className="py-20 bg-white">
+      <section id="caracteristicas" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             className="text-center mb-16"
@@ -291,45 +291,45 @@ export default function LandingPage() {
                 icon: <Heart className="w-8 h-8" />,
                 title: "Gestión Colaborativa",
                 description: "Ambos podéis registrar gastos, ver el progreso y tomar decisiones financieras juntos.",
-                color: "from-pink-500 to-rose-500"
+                color: "bg-pink-100 text-pink-600"
               },
               {
                 icon: <Zap className="w-8 h-8" />,
                 title: "Inteligencia Artificial",
                 description: "Nuestro chatbot os ayuda con consejos personalizados y análisis de vuestros hábitos de gasto.",
-                color: "from-purple-500 to-indigo-500"
+                color: "bg-purple-100 text-purple-600"
               },
               {
                 icon: <TrendingUp className="w-8 h-8" />,
                 title: "Visualizaciones Inteligentes",
                 description: "Gráficos y reportes que hacen fácil entender hacia dónde va vuestro dinero.",
-                color: "from-blue-500 to-cyan-500"
+                color: "bg-blue-100 text-blue-600"
               },
               {
                 icon: <PiggyBank className="w-8 h-8" />,
                 title: "Objetivos de Ahorro",
                 description: "Estableced metas compartidas y tracked vuestro progreso hacia ellas automáticamente.",
-                color: "from-green-500 to-emerald-500"
+                color: "bg-green-100 text-green-600"
               },
               {
                 icon: <Shield className="w-8 h-8" />,
                 title: "Seguridad Bancaria",
                 description: "Protección de nivel bancario para vuestros datos financieros más sensibles.",
-                color: "from-gray-500 to-slate-500"
+                color: "bg-gray-100 text-gray-600"
               },
               {
                 icon: <Smartphone className="w-8 h-8" />,
                 title: "Mobile-First",
                 description: "Diseño optimizado para móvil que funciona perfectamente en cualquier dispositivo.",
-                color: "from-orange-500 to-amber-500"
+                color: "bg-orange-100 text-orange-600"
               }
             ].map((feature, index) => (
               <motion.div 
                 key={index}
-                className="card card-hover text-center"
+                className="bg-white rounded-lg border border-gray-200 p-6 text-center shadow-sm hover:shadow-md transition-shadow"
                 variants={fadeInUp}
               >
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${feature.color} flex items-center justify-center text-white`}>
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-lg ${feature.color} flex items-center justify-center`}>
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -345,7 +345,7 @@ export default function LandingPage() {
       </section>
 
       {/* Social Proof Section */}
-      <section className="py-16 bg-gray-50">
+      <section id="testimonios" className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             className="text-center"
@@ -391,7 +391,7 @@ export default function LandingPage() {
               ].map((testimonial, index) => (
                 <motion.div 
                   key={index}
-                  className="bg-white rounded-xl p-6 shadow-soft"
+                  className="bg-gray-50 rounded-lg border border-gray-200 p-6"
                   variants={fadeInUp}
                   initial="initial"
                   whileInView="animate"
@@ -415,7 +415,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-500 to-cyan-500">
+      <section className="py-20 bg-blue-600">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <motion.div
             variants={fadeInUp}
@@ -430,8 +430,8 @@ export default function LandingPage() {
               Úneos a las miles de parejas que ya están construyendo un futuro financiero sólido juntos.
             </p>
             <Link 
-              href="/auth/signup"
-              className="bg-white hover:bg-gray-100 text-blue-600 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 inline-flex items-center space-x-2 hover:scale-105"
+              href="/auth/register"
+              className="bg-white hover:bg-gray-100 text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 inline-flex items-center space-x-2 hover:scale-105"
             >
               <span>Empezar Ahora - Gratis</span>
               <ArrowRight className="w-5 h-5" />
@@ -445,8 +445,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                   <Heart className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold">Budget Couple</span>
@@ -459,8 +459,8 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold mb-4">Producto</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Características</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Precios</a></li>
+                <li><a href="#caracteristicas" className="hover:text-white transition-colors">Características</a></li>
+                <li><Link href="/auth/register" className="hover:text-white transition-colors">Registro</Link></li>
                 <li><a href="#" className="hover:text-white transition-colors">Seguridad</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">API</a></li>
               </ul>
